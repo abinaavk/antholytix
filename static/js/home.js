@@ -70,14 +70,21 @@ function classify(h, s, v) {
 
 function showResult(result, hex) {
   var panel = document.getElementById("resultPanel");
+  var st    = result.state.toLowerCase();
+
   document.getElementById("resEmoji").textContent = result.emoji;
 
   var label = document.getElementById("resLabel");
   label.textContent = result.state;
-  label.className = "result-label " + result.state.toLowerCase();
+  label.className = "result-label " + st;
+
+  var bar = document.getElementById("resBar");
+  bar.className = "result-status-bar " + st;
 
   document.getElementById("resDesc").textContent = result.desc;
+  document.getElementById("resColorDesc").textContent = result.desc;
   document.getElementById("resSwatch").style.background = hex;
+  document.getElementById("resSwatch").style.boxShadow = "0 0 18px " + hex + "88";
   document.getElementById("resHex").textContent = hex;
   document.getElementById("resPh").textContent = result.ph;
 
