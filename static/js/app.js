@@ -2458,8 +2458,7 @@ function bindGlobalUi(){
         '<div><div style="font-weight:700; font-size:14.5px;">Guest Account</div><div class="faint" style="font-size:12px;">Not signed in · on this device</div></div>'+
       '</div>'+
       '<p class="muted" style="font-size:12.5px; margin-top:16px; line-height:1.6;">Scan history and notifications are only visible after you sign in — a guest session can\'t see or save either.</p>'+
-      '<button class="btn btn-dark btn-block" id="open-signin-btn" style="margin-top:16px;">Sign in or create account</button>'+
-      '<a class="btn btn-outline btn-block" href="#/admin" data-close-modal style="margin-top:10px; font-size:13px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin Portal</a>'
+      '<button class="btn btn-dark btn-block" id="open-signin-btn" style="margin-top:16px;">Sign in or create account</button>'
     );
     qs('#open-signin-btn').addEventListener('click', function(){ openAuthModal('signin'); });
   });
