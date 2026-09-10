@@ -202,6 +202,27 @@ function refreshAdminNav(){
   }
 }
 
+function syncCurrentUserRole(){
+  if (!isLoggedIn()) return Promise.resolve(null);
+  return authFetch('/account/me')
+    .then(function(res){ return res.ok ? res.json() : null; })
+    .then(function(data){
+      if (data && data.success && data.user){
+        var a = getAuth();
+        if (a){
+          a.is_admin = !!data.user.is_admin;
+          if (data.user.name) a.name = data.user.name;
+          setAuth(a);
+          refreshAdminNav();
+          paintAccountButton();
+          return a;
+        }
+      }
+      return null;
+    })
+    .catch(function(){ return null; });
+}
+
 /* Re-renders whatever's currently on screen that depends on login state —
    called right after sign-in, sign-out, or a token expiring mid-session. */
 function refreshAuthUi(){
@@ -300,7 +321,10 @@ var TITLES = {
 
 function currentRoute(){
   var h = location.hash.replace('#/','').split('?')[0];
-  return ROUTES.indexOf(h) >= 0 ? h : 'home';
+  if (ROUTES.indexOf(h) >= 0) return h;
+  var p = (location.pathname || '').replace(/\/+$/, '');
+  if (p === '/admin') return 'admin';
+  return 'home';
 }
 
 function navigate(route){
@@ -994,33 +1018,85 @@ function renderAdmin(){
   var host = qs('#view-admin');
   if (!host) return;
 
-  if (!isLoggedIn()){
+  if (!isLoggedIn() || !isAdminUser()){
     host.innerHTML =
-      '<div class="card">' +
-        signInPrompt('Admin access required', 'Administrator privileges are required to view this dashboard. Please sign in with an administrator account to continue.') +
-      '</div>';
-    bindSignInPrompts(host);
-    return;
-  }
-
-  if (!isAdminUser()){
-    host.innerHTML =
-      '<div class="card">' +
-        '<div class="empty">' + ICON.lock +
-          '<div style="font-weight:700; color:var(--ink); font-size:16px; margin-top:10px;">Admin access required</div>' +
-          '<div style="font-size:12.5px; margin-top:6px; max-width:420px; line-height:1.6;">' +
-            'Your account (' + escapeHtml((getAuth() && getAuth().email) || '') + ') is signed in but does not have administrator privileges. Sign in with an admin account or request promotion from a system administrator.' +
+      '<div class="card" style="max-width:440px; margin:32px auto; padding:32px 26px;">' +
+        '<div style="text-align:center; margin-bottom:22px;">' +
+          '<div style="display:inline-flex; width:52px; height:52px; border-radius:16px; background:var(--panel); align-items:center; justify-content:center; margin-bottom:12px;">' +
+            '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' +
           '</div>' +
-          '<div style="display:flex; gap:10px; margin-top:16px;">' +
-            '<button class="btn btn-dark btn-sm" id="btn-admin-gate-switch">Switch account</button>' +
-            '<button class="btn btn-outline btn-sm" id="btn-admin-gate-home">Back to Home</button>' +
+          '<h3 style="font-size:18px; font-weight:700;">Admin Authentication</h3>' +
+          '<p class="muted" style="font-size:12.5px; margin-top:4px;">Enter administrator credentials to access dashboard</p>' +
+        '</div>' +
+        '<div style="display:flex; flex-direction:column; gap:12px;">' +
+          '<div>' +
+            '<div class="field-label" style="font-size:12px; margin-bottom:4px;">Username or Email</div>' +
+            '<input id="admin-gate-user" class="field-input" type="text" placeholder="admin" value="admin" autocomplete="username">' +
           '</div>' +
+          '<div>' +
+            '<div class="field-label" style="font-size:12px; margin-bottom:4px;">Password</div>' +
+            '<input id="admin-gate-pass" class="field-input" type="password" placeholder="admin" autocomplete="current-password">' +
+          '</div>' +
+          '<p id="admin-gate-error" class="faint" style="font-size:12px; color:var(--danger); display:none;"></p>' +
+          '<button class="btn btn-dark btn-block" id="admin-gate-login-btn" style="margin-top:6px;">Sign in as Admin</button>' +
+          '<button class="btn btn-outline btn-block" id="admin-gate-home-btn" style="margin-top:2px;">Back to Home</button>' +
         '</div>' +
       '</div>';
-    var switchBtn = qs('#btn-admin-gate-switch');
-    if (switchBtn) switchBtn.addEventListener('click', function(){ clearAuth(); refreshAuthUi(); openAuthModal('signin'); });
-    var homeBtn = qs('#btn-admin-gate-home');
+
+    var loginBtn = qs('#admin-gate-login-btn');
+    var userInput = qs('#admin-gate-user');
+    var passInput = qs('#admin-gate-pass');
+    var errEl = qs('#admin-gate-error');
+    var homeBtn = qs('#admin-gate-home-btn');
+
     if (homeBtn) homeBtn.addEventListener('click', function(){ navigate('home'); });
+
+    function doAdminGateLogin(){
+      var u = (userInput.value || '').trim();
+      var p = passInput.value || '';
+      if (!u || !p){
+        errEl.textContent = 'Enter username and password.';
+        errEl.style.display = 'block';
+        return;
+      }
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Authenticating…';
+      errEl.style.display = 'none';
+      fetch(API_BASE + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: u, password: p })
+      })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign in as Admin';
+        if (data && data.success){
+          if (!data.is_admin){
+            errEl.textContent = 'This account does not have administrator privileges.';
+            errEl.style.display = 'block';
+            return;
+          }
+          setAuth({ token: data.token, name: data.name, email: data.email, is_admin: true });
+          toast('Admin authenticated');
+          refreshAuthUi();
+          renderAdmin();
+        } else {
+          errEl.textContent = (data && data.message) || 'Invalid administrator credentials.';
+          errEl.style.display = 'block';
+        }
+      })
+      .catch(function(){
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign in as Admin';
+        errEl.textContent = 'Could not reach the server.';
+        errEl.style.display = 'block';
+      });
+    }
+
+    if (loginBtn) loginBtn.addEventListener('click', doAdminGateLogin);
+    if (userInput) userInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') doAdminGateLogin(); });
+    if (passInput) passInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') doAdminGateLogin(); });
     return;
   }
 
@@ -2608,7 +2684,7 @@ function renderAuthSignIn(){
   openModal(
     '<div style="display:flex; align-items:center;"><h3 style="font-size:16px;">Sign in</h3><button class="modal-close" data-close-modal>'+ICON.cross+'</button></div>'+
     authTabsHtml('signin')+
-    authInputHtml('signin-email','email','Email address')+
+    authInputHtml('signin-email','text','Email address or admin')+
     authInputHtml('signin-password','password','Password')+
     authErrorHtml()+
     '<button class="btn btn-dark btn-block" id="signin-submit" style="margin-top:14px;">Sign in</button>'+
@@ -2798,8 +2874,13 @@ function init(){
   paintAccountButton();
   refreshAdminNav();
   bindGlobalUi();
-  if (!location.hash) location.hash = '#/home';
+  if (!location.hash){
+    var p = (location.pathname || '').replace(/\/+$/, '');
+    if (p === '/admin') location.hash = '#/admin';
+    else location.hash = '#/home';
+  }
   render(currentRoute());
+  if (isLoggedIn()) syncCurrentUserRole();
 
   var resizeTimer;
   window.addEventListener('resize', function(){

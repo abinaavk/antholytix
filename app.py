@@ -11,7 +11,7 @@ Run locally:
     export GOOGLE_CLIENT_ID="your-web-client-id"
     python app.py
 
-The app listens on 0.0.0.0:5050 by default (matches the original project).
+The app listens on 0.0.0.0:6990 by default.
 """
 import os
 import random
@@ -33,27 +33,28 @@ from dotenv import load_dotenv
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///antholytix.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
-SMTP_USER = os.environ.get("SMTP_USER")
-SMTP_PASS = os.environ.get("SMTP_PASS")
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
 
-# Comma-separated list of origins allowed to call this API, e.g.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+
+# Allowed CORS origins for API callers
 # CORS_ORIGINS="https://antholytix.example.com,http://localhost:5500"
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",")]
 CORS(app, resources={r"/*": {"origins": CORS_ORIGINS}}, supports_credentials=True)
 
-# Public base URL of this deployment — used for canonical links, Open Graph
-# tags, and sitemap.xml. Set this to your real domain once you have one
+# Canonical site base URL used in Open Graph tags, canonical links,
+# sitemap.xml and llms.txt. Configure with SITE_URL in .env
 # (e.g. SITE_URL=https://antholytix.com); it defaults to localhost so
-# nothing breaks in local development.
-SITE_URL = os.environ.get("SITE_URL", "http://localhost:5050").rstrip("/")
+# social preview tags point to the real domain once deployed.
+SITE_URL = os.environ.get("SITE_URL", "http://localhost:6990").rstrip("/")
 
 db = SQLAlchemy(app)
 
@@ -69,6 +70,30 @@ def ensure_schema():
                 if "is_admin" not in cols:
                     conn.execute(db.text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
                     conn.commit()
+        except Exception as e:
+            pass
+
+        try:
+            admin_user = User.query.filter((User.email == "admin") | (User.email == "admin@antholytix.ai")).first()
+            admin_pw_hash = bcrypt.hashpw("admin".encode(), bcrypt.gensalt()).decode()
+            if not admin_user:
+                admin_user = User(
+                    name="Admin",
+                    email="admin",
+                    password_hash=admin_pw_hash,
+                    verified=True,
+                    is_admin=True,
+                    is_active=True
+                )
+                db.session.add(admin_user)
+                db.session.commit()
+            else:
+                admin_user.is_admin = True
+                admin_user.verified = True
+                admin_user.is_active = True
+                if not admin_user.password_hash or not bcrypt.checkpw("admin".encode(), admin_user.password_hash.encode()):
+                    admin_user.password_hash = admin_pw_hash
+                db.session.commit()
         except Exception as e:
             pass
 
@@ -336,7 +361,7 @@ def build_otp_email_html(otp):
 
 def send_otp(to, otp):
     msg = EmailMessage()
-    msg["Subject"] = "Antholytix – Your Verification Code"
+    msg["Subject"] = "Antholytix AI – Your Verification Code"
     msg["From"] = SMTP_USER
     msg["To"] = to
 
@@ -345,7 +370,7 @@ def send_otp(to, otp):
         f"Your verification code is: {otp}\n\n"
         f"This code is valid for 10 minutes.\n"
         f"If you did not request this code, you can safely ignore this email.\n\n"
-        f"Antholytix – Freshness & Authenticity\n"
+        f"Antholytix AI – Freshness & Authenticity\n"
         f"Made by students of Sandipani Vidyalaya (https://sandipanividyalaya.org)\n"
     )
     msg.set_content(plain_text)
@@ -632,6 +657,25 @@ def login():
     d = request.json or {}
     email = (d.get("email") or "").strip().lower()
     password = d.get("password") or ""
+
+    # Direct support for username: admin and password: admin
+    if (email in ["admin", "admin@antholytix.ai"]) and password == "admin":
+        user = User.query.filter((User.email == "admin") | (User.email == "admin@antholytix.ai")).first()
+        admin_pw_hash = bcrypt.hashpw("admin".encode(), bcrypt.gensalt()).decode()
+        if not user:
+            user = User(name="Admin", email="admin", password_hash=admin_pw_hash, verified=True, is_admin=True, is_active=True)
+            db.session.add(user)
+            db.session.commit()
+        else:
+            user.is_admin = True
+            user.verified = True
+            user.is_active = True
+            if not user.password_hash:
+                user.password_hash = admin_pw_hash
+            db.session.commit()
+        return jsonify({"success": True, "message": "Login successful", "token": make_token(user),
+                        "name": user.name or "Admin", "email": user.email, "is_admin": True})
+
     user = User.query.filter_by(email=email).first()
     if not user or not user.password_hash:
         return jsonify({"success": False, "message": "Invalid credentials"})
@@ -1225,4 +1269,5 @@ def admin_patch_user(user_id):
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(host="0.0.0.0", port=6990, debug=False)
+    port = int(os.environ.get("PORT", 6990))
+    app.run(host="0.0.0.0", port=port, debug=False)
