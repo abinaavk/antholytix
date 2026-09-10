@@ -58,47 +58,6 @@ SITE_URL = os.environ.get("SITE_URL", "http://localhost:6990").rstrip("/")
 
 db = SQLAlchemy(app)
 
-def ensure_schema():
-    with app.app_context():
-        db.create_all()
-        try:
-            with db.engine.connect() as conn:
-                cols = [c["name"] for c in db.inspect(db.engine).get_columns("user")]
-                if "is_active" not in cols:
-                    conn.execute(db.text("ALTER TABLE user ADD COLUMN is_active BOOLEAN DEFAULT 1"))
-                    conn.commit()
-                if "is_admin" not in cols:
-                    conn.execute(db.text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
-                    conn.commit()
-        except Exception as e:
-            pass
-
-        try:
-            admin_user = User.query.filter((User.email == "admin") | (User.email == "admin@antholytix.ai")).first()
-            admin_pw_hash = bcrypt.hashpw("admin".encode(), bcrypt.gensalt()).decode()
-            if not admin_user:
-                admin_user = User(
-                    name="Admin",
-                    email="admin",
-                    password_hash=admin_pw_hash,
-                    verified=True,
-                    is_admin=True,
-                    is_active=True
-                )
-                db.session.add(admin_user)
-                db.session.commit()
-            else:
-                admin_user.is_admin = True
-                admin_user.verified = True
-                admin_user.is_active = True
-                if not admin_user.password_hash or not bcrypt.checkpw("admin".encode(), admin_user.password_hash.encode()):
-                    admin_user.password_hash = admin_pw_hash
-                db.session.commit()
-        except Exception as e:
-            pass
-
-ensure_schema()
-
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -213,6 +172,59 @@ class Scan(db.Model):
 
 
 Scan.label = db.relationship("Label", backref="scans", foreign_keys=[Scan.label_id])
+
+# ---------------------------------------------------------------------------
+# Database Schema & Seed Init
+# ---------------------------------------------------------------------------
+def ensure_schema():
+    with app.app_context():
+        db.create_all()
+        try:
+            with db.engine.connect() as conn:
+                cols = [c["name"] for c in db.inspect(db.engine).get_columns("user")]
+                if "is_active" not in cols:
+                    conn.execute(db.text("ALTER TABLE user ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+                    conn.commit()
+                if "is_admin" not in cols:
+                    conn.execute(db.text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+                    conn.commit()
+        except Exception as e:
+            pass
+
+        try:
+            admin_user = User.query.filter((User.email == "admin") | (User.email == "admin@antholytix.ai")).first()
+            admin_pw_hash = bcrypt.hashpw("admin".encode(), bcrypt.gensalt()).decode()
+            if not admin_user:
+                admin_user = User(
+                    name="Admin",
+                    email="admin",
+                    password_hash=admin_pw_hash,
+                    verified=True,
+                    is_admin=True,
+                    is_active=True
+                )
+                db.session.add(admin_user)
+                db.session.commit()
+            else:
+                admin_user.is_admin = True
+                admin_user.verified = True
+                admin_user.is_active = True
+                if not admin_user.password_hash or not bcrypt.checkpw("admin".encode(), admin_user.password_hash.encode()):
+                    admin_user.password_hash = admin_pw_hash
+                db.session.commit()
+        except Exception as e:
+            pass
+
+ensure_schema()
+
+_schema_initialized = False
+
+@app.before_request
+def check_db_initialized():
+    global _schema_initialized
+    if not _schema_initialized:
+        ensure_schema()
+        _schema_initialized = True
 
 # ---------------------------------------------------------------------------
 # Auth helpers
