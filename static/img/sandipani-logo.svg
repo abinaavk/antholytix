@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!--
+    PLACEHOLDER LOGO — replace this file (keep the same filename,
+    sandipani-logo.svg) with the real Sandipani Vidyalaya emblem.
+    A PNG/JPG works too: just update the <img src> in renderAbout()
+    in static/js/app.js if you change the file extension.
+  -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c23e86"/>
+      <stop offset="0.5" stop-color="#3f70da"/>
+      <stop offset="1" stop-color="#d9a62e"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="none" stroke="url(#ring)" stroke-width="6"/>
+  <circle cx="60" cy="60" r="46" fill="#15171a"/>
+  <text x="60" y="71" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#f7f6f2">SV</text>
+</svg>

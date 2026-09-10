@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — Antholytix AI</title>
+<meta name="description" content="How Antholytix AI labels and the scanner work, what foods they're designed for, and how to register labels via the API.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ site_url }}/docs">
+<link rel="icon" href="{{ url_for('static', filename='img/icon-32.png') }}" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<script>
+  (function(){
+    try{
+      var saved = localStorage.getItem('Antholytix AI_theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = (saved === 'light' || saved === 'dark') ? saved : (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    }catch(e){ document.documentElement.setAttribute('data-theme', 'light'); }
+  })();
+</script>
+<style>
+  .docs-wrap{max-width:760px; margin:0 auto; padding:40px 20px 80px;}
+  .docs-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; gap:12px; flex-wrap:wrap;}
+  .docs-brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:700; font-size:18px;}
+  .docs-brand .mark{width:32px; height:32px; border-radius:10px; background:conic-gradient(from 210deg, var(--spec-1), var(--spec-2), var(--spec-3), var(--spec-4), var(--spec-5), var(--spec-1));}
+  .docs h1{font-size:30px; margin-bottom:8px;}
+  .docs h2{font-size:20px; margin:38px 0 12px;}
+  .docs h3{font-size:15.5px; margin:20px 0 8px;}
+  .docs p{font-size:14.5px; line-height:1.7; color:var(--ink-soft); margin-bottom:10px;}
+  .docs code{font-family:ui-monospace,monospace; background:var(--panel); padding:2px 6px; border-radius:6px; font-size:13px; color:var(--ink);}
+  .docs pre{background:var(--panel); border-radius:14px; padding:16px; overflow-x:auto; font-size:12.5px; font-family:ui-monospace,monospace; margin:12px 0; border:1px solid var(--card-border);}
+  .docs table{width:100%; border-collapse:collapse; font-size:13.5px; margin:14px 0;}
+  .docs th{text-align:left; color:var(--ink-faint); font-weight:600; padding:8px 6px; border-bottom:1px solid var(--card-border);}
+  .docs td{padding:9px 6px; border-bottom:1px solid var(--hairline);}
+  .docs ul, .docs ol{margin:8px 0 14px 20px; font-size:14.5px; line-height:1.7; color:var(--ink-soft);}
+  .docs section{margin-bottom:8px;}
+  .toc{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 30px;}
+  .toc a{font-size:12.5px; font-weight:600; padding:7px 12px; border-radius:99px; background:var(--panel); color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="docs-wrap docs">
+  <div class="docs-top">
+    <a class="docs-brand" href="/"><span class="mark"></span> Antholytix AI</a>
+    <a class="btn btn-outline" href="/">Open the app</a>
+  </div>
+
+  <h1>Documentation</h1>
+  <p>How Antholytix AI labels work, what they're for, and how to integrate them if you're a manufacturer or retailer.</p>
+
+  <nav class="toc" aria-label="On this page">
+    <a href="#scope">What it's for</a>
+    <a href="#using">Using the scanner</a>
+    <a href="#label">The label</a>
+    <a href="#api">API for businesses</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
+  <section id="scope">
+    <h2>What Antholytix AI is for</h2>
+    <p>Antholytix AI is a freshness and authenticity check for <strong>packaged perishable proteins and dairy</strong> — milk, paneer, curd, yoghurt, chicken, meat, fish and similar cold-chain products. Each label carries an anthocyanin pigment strip that shifts colour as the product's surface pH drifts with spoilage, plus a QR code that verifies the label itself is genuine and pulls the product's manufacture and expiry dates.</p>
+    <h3>Where it doesn't apply</h3>
+    <p>The pigment reacts to <em>pH</em>, not to spoilage in general — so it isn't reliable on foods that are already acidic before they spoil (pickles, citrus dishes, fermented foods, vinegar-based preparations) or on dry foods where there isn't enough surface moisture for the pigment to react at all (snacks, grains, dry mixes). It's a freshness and authenticity aid, not a guarantee against every foodborne pathogen — some, like <em>Listeria</em>, can be present without producing the alkaline byproducts the indicator looks for.</p>
+  </section>
+
+  <section id="using">
+    <h2>Using the scanner</h2>
+    <ol>
+      <li>Open the app on your phone (the live camera scanner needs a handheld rear camera, so it's mobile-only by design).</li>
+      <li>Align the label's pigment square in the first frame — hold steady for a moment while the reading stabilises.</li>
+      <li>The same pass reads the QR code and looks up the product record.</li>
+      <li>You get one combined verdict — <strong>safe</strong>, <strong>consume soon</strong>, or <strong>do not consume</strong> — from whichever of the pigment reading or the expiry date is worse.</li>
+    </ol>
+    <p>Sign in to keep a history of what you've scanned — it's tied to your account and only visible to you.</p>
+  </section>
+
+  <section id="label">
+    <h2>What's printed on every label</h2>
+    <table>
+      <thead><tr><th>Element</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td>Pigment strip</td><td>Anthocyanin square, shifts red → purple → blue → green → yellow as pH rises</td></tr>
+        <tr><td>QR code</td><td>16-character unique code, letters + digits + symbols (e.g. <code>K7#9-QD4$-N2!B-8XM6</code>)</td></tr>
+        <tr><td>Dates</td><td>Manufacture date and expiry date</td></tr>
+        <tr><td>Product info</td><td>Name, company, and quantity where applicable</td></tr>
+      </tbody>
+    </table>
+    <p>See the full chemistry — the anthocyanin structure, the pH transitions, and how bacterial spoilage triggers them — on the <a href="/#/about">How it works</a> page in the app.</p>
+  </section>
+
+  <section id="api">
+    <h2>API for manufacturers &amp; retailers</h2>
+    <p>If you're printing Antholytix AI labels for your own products, you register each one against our backend so its QR code resolves to real product data.</p>
+    <h3>Register a label</h3>
+    <pre>POST /labels
+Authorization: Bearer &lt;your admin token&gt;
+Content-Type: application/json
+
+{
+  "name": "Fresh Paneer, 200 g",
+  "company": "Your Company Pvt. Ltd.",
+  "qty": "200 g",
+  "mfg": "2026-09-01",
+  "exp": "2026-09-09"
+}</pre>
+    <p>Returns a generated 16-character <code>code</code> — encode that (or the full JSON) into the label's QR square.</p>
+    <h3>What the scanner calls</h3>
+    <pre>POST /scan/analyze
+Content-Type: application/json
+
+{ "code": "K7#9-QD4$-N2!B-8XM6", "hue": 342.5, "saturation": 0.61, "value": 0.68 }</pre>
+    <p>Returns the combined pigment + expiry verdict. Full endpoint reference is in the project <code>README.md</code>.</p>
+  </section>
+
+  <section id="faq">
+    <h2>FAQ</h2>
+    <h3>Will it work on any food, like lemon rice or leftovers?</h3>
+    <p>No — see <a href="#scope">What it's for</a> above. It's built for packaged perishable proteins and dairy, not general home cooking.</p>
+    <h3>Why does this need an app instead of just a printed colour key?</h3>
+    <p>The colour difference between "still fine" and "turning" is often subtle enough that a camera reading it numerically is more consistent than eyeballing it under uncertain lighting. The QR side does a different job entirely — proving the label's genuine and checking the date — which a printed legend can't do on its own.</p>
+    <h3>Is my scan history private?</h3>
+    <p>Yes. History and notifications are only visible after you sign in, and the backend scopes them to your account — no one else can see your scans.</p>
+  </section>
+
+  <p class="faint" style="margin-top:40px; font-size:12px;">Questions we haven't answered here? <a href="https://wa.me/919363719509" target="_blank" rel="noopener">Message us on WhatsApp</a>.</p>
+</div>
+</body>
+</html>
