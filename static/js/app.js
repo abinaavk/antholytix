@@ -200,6 +200,10 @@ function refreshAdminNav(){
   if (nav){
     nav.style.display = isAdminUser() ? 'flex' : 'none';
   }
+  var bn = qs('#bn-admin');
+  if (bn){
+    bn.style.display = isAdminUser() ? 'flex' : 'none';
+  }
 }
 
 function syncCurrentUserRole(){
@@ -474,6 +478,23 @@ function timeAgo(iso){
   if (diff < 1) return 'just now';
   if (diff < 24) return diff+'h ago';
   return Math.round(diff/24)+'d ago';
+}
+
+function formatDateTime(iso){
+  if (!iso) return '—';
+  try {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var day = d.getDate();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var month = months[d.getMonth()];
+    var year = d.getFullYear();
+    var hours = ('0' + d.getHours()).slice(-2);
+    var mins = ('0' + d.getMinutes()).slice(-2);
+    return day + ' ' + month + ' ' + year + ', ' + hours + ':' + mins;
+  } catch(e){
+    return iso;
+  }
 }
 
 function miniProductHtml(p){
@@ -861,6 +882,15 @@ function renderSettings(){
       '<div class="si">'+ICON.cross+'</div><div class="sb"><div class="st">Delete account</div><div class="sd">Permanently removes your account and all scan history</div></div>'+
     '</button>'+
   '</div>'+
+
+  (isAdminUser() ?
+    '<div class="card">'+
+      '<div class="card-head"><h3>Administration</h3></div>'+
+      '<a class="settings-row" href="#/admin" style="width:100%; text-align:left; text-decoration:none; border:none; display:flex;">'+
+        '<div class="si" style="background:var(--pill); color:var(--pill-text);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>'+
+        '<div class="sb"><div class="st">Admin Dashboard</div><div class="sd">Manage labels, user accounts and system overview</div></div>'+
+      '</a>'+
+    '</div>' : '') +
 
   '<div class="card">'+
     '<div class="card-head"><h3>Support</h3></div>'+
@@ -1577,7 +1607,10 @@ function paintScansTable(){
         '</div>' +
       '</td>' +
       '<td>' + verdictBadge + '</td>' +
-      '<td><span class="faint" style="font-size:12px;">' + (s.created_at ? timeAgo(s.created_at) : '—') + '</span></td>' +
+      '<td>' +
+        '<div style="font-size:12.5px; font-weight:500; white-space:nowrap;">' + formatDateTime(s.created_at) + '</div>' +
+        '<div class="faint" style="font-size:11px;">' + (s.created_at ? timeAgo(s.created_at) : '') + '</div>' +
+      '</td>' +
     '</tr>';
   }).join('');
 
@@ -1641,7 +1674,10 @@ function paintUsersTable(){
       '</td>' +
       '<td>' + roleBadge + '</td>' +
       '<td>' + verifiedBadge + '</td>' +
-      '<td>' + (u.created_at ? timeAgo(u.created_at) : '—') + '</td>' +
+      '<td>' +
+        '<div style="font-size:12.5px; font-weight:500; white-space:nowrap;">' + formatDateTime(u.created_at) + '</div>' +
+        '<div class="faint" style="font-size:11px;">' + (u.created_at ? timeAgo(u.created_at) : '') + '</div>' +
+      '</td>' +
       '<td style="text-align:center;"><span style="font-weight:700;">' + (u.scan_count || 0) + '</span></td>' +
       '<td>' + activeBadge + '</td>' +
       '<td><div style="display:flex; gap:6px;">' + statusBtn + roleBtn + '</div></td>' +
@@ -2401,7 +2437,8 @@ function bindGlobalUi(){
           '<div><div style="font-weight:700; font-size:14.5px;">'+escapeHtml(auth.name||'')+'</div><div class="faint" style="font-size:12px;">'+escapeHtml(auth.email||'')+' · Signed in</div></div>'+
         '</div>'+
         '<p class="muted" style="font-size:12.5px; margin-top:16px; line-height:1.6;">Your scan history and notifications are tied to this account and only visible to you.</p>'+
-        '<a class="btn btn-dark btn-block" href="#/settings" data-close-modal style="margin-top:16px;">'+ICON.settings+' Settings</a>'+
+        (isAdminUser() ? '<a class="btn btn-dark btn-block" href="#/admin" data-close-modal style="margin-top:14px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin Dashboard</a>' : '') +
+        '<a class="btn btn-outline btn-block" href="#/settings" data-close-modal style="margin-top:10px;">'+ICON.settings+' Settings</a>'+
         '<button class="btn btn-outline btn-block" id="sign-out-btn" style="margin-top:10px;">Sign out</button>'
       );
       qs('#sign-out-btn').addEventListener('click', function(){
@@ -2421,7 +2458,8 @@ function bindGlobalUi(){
         '<div><div style="font-weight:700; font-size:14.5px;">Guest Account</div><div class="faint" style="font-size:12px;">Not signed in · on this device</div></div>'+
       '</div>'+
       '<p class="muted" style="font-size:12.5px; margin-top:16px; line-height:1.6;">Scan history and notifications are only visible after you sign in — a guest session can\'t see or save either.</p>'+
-      '<button class="btn btn-dark btn-block" id="open-signin-btn" style="margin-top:16px;">Sign in or create account</button>'
+      '<button class="btn btn-dark btn-block" id="open-signin-btn" style="margin-top:16px;">Sign in or create account</button>'+
+      '<a class="btn btn-outline btn-block" href="#/admin" data-close-modal style="margin-top:10px; font-size:13px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin Portal</a>'
     );
     qs('#open-signin-btn').addEventListener('click', function(){ openAuthModal('signin'); });
   });
@@ -2684,7 +2722,7 @@ function renderAuthSignIn(){
   openModal(
     '<div style="display:flex; align-items:center;"><h3 style="font-size:16px;">Sign in</h3><button class="modal-close" data-close-modal>'+ICON.cross+'</button></div>'+
     authTabsHtml('signin')+
-    authInputHtml('signin-email','text','Email address or admin')+
+    authInputHtml('signin-email','text','Email address')+
     authInputHtml('signin-password','password','Password')+
     authErrorHtml()+
     '<button class="btn btn-dark btn-block" id="signin-submit" style="margin-top:14px;">Sign in</button>'+
